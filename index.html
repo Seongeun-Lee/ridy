@@ -7,22 +7,22 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   body{background:#f5f5f5;display:flex;flex-direction:column;min-height:100vh}
-  header{background:#4CAF50;color:#fff;padding:1rem;text-align:center;font-weight:700;font-size:1.4rem}
+  header{background:#FFD700;color:#000;padding:1rem;text-align:center;font-weight:700;font-size:1.4rem}
   main{flex:1;padding:1rem;overflow-y:auto}
   .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #ddd}
   .tab{flex:1;text-align:center;padding:.9rem;font-weight:700;cursor:pointer}
-  .tab.active{color:#4CAF50;border-top:3px solid #4CAF50}
+  .tab.active{color:#FFD700;border-top:3px solid #FFD700}
   .search-section,.my-schedule{margin-bottom:88px}
   .user-type{display:flex;gap:.5rem;margin-bottom:1rem}
-  .user-type button{flex:1;padding:.5rem;border-radius:6px;border:1px solid #4CAF50;background:#fff;color:#4CAF50;cursor:pointer}
-  .user-type button.active{background:#4CAF50;color:#fff}
+  .user-type button{flex:1;padding:.5rem;border-radius:6px;border:1px solid #FFD700;background:#fff;color:#FFD700;cursor:pointer}
+  .user-type button.active{background:#FFD700;color:#000}
   .input-section{margin-bottom:1rem}
   .input-section label{display:block;font-weight:700;margin-bottom:.3rem}
   .input-section input{width:100%;padding:.5rem;border-radius:6px;border:1px solid #ccc;margin-bottom:.5rem}
-  .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:#4CAF50;color:#fff;cursor:pointer}
+  .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:#FFD700;color:#000;cursor:pointer}
   .schedule-list{display:flex;flex-direction:column;gap:.8rem}
   .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;transition:background .12s}
-  .schedule-block:hover{background:#e8f5f2}
+  .schedule-block:hover{background:#fff8dc}
   @media(min-width:768px){ main{max-width:720px;margin:0 auto} }
 </style>
 </head>
@@ -58,7 +58,6 @@
       </div>
     </div>
 
-    <!-- Schedule List (shared) -->
     <div class="schedule-list" id="scheduleList"></div>
   </div>
 
@@ -100,9 +99,15 @@
   const passengerInput = document.getElementById('passengerInput');
   const driverInput = document.getElementById('driverInput');
 
-  const passengerDestinationInput = document.getElementById('passengerDestination');
   const scheduleList = document.getElementById('scheduleList');
   const myScheduleList = document.getElementById('myScheduleList');
+
+  // 1. 사용자 ID 설정
+  let userID = localStorage.getItem('ridyUserID');
+  if (!userID) {
+    userID = prompt("Enter your unique ID (anything unique for you)");
+    localStorage.setItem('ridyUserID', userID);
+  }
 
   searchTabBtn.addEventListener('click', ()=> {
     searchTab.style.display = 'block';
@@ -130,7 +135,7 @@
     passengerInput.style.display = 'none';
   });
 
-  function createScheduleBlock({driver,destination,date,time,seats,owner}){
+  function createScheduleBlock({driver,destination,date,time,seats,owner}) {
     const block = document.createElement('div');
     block.className = 'schedule-block';
     block.dataset.driver = driver;
@@ -144,61 +149,54 @@
                        <div><strong>Date:</strong> ${date}</div>
                        <div><strong>Time:</strong> ${time}</div>
                        <div><strong>Seats:</strong> ${seats}</div>`;
-    addBlockClickEvent(block);
+    if(owner !== 'my') addBlockClickEvent(block);
     return block;
   }
 
-  function addBlockClickEvent(block){
-    block.addEventListener('click',(e)=>{
+  function addBlockClickEvent(block) {
+    block.addEventListener('click', (e) => {
       e.stopPropagation();
-      const {driver,destination,date,time,seats,owner} = block.dataset;
-      if(owner==='me'){
-        alert(`Your ride\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
-        return;
-      }
+      const {driver,destination,date,time,seats} = block.dataset;
       const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
-      if(!ok) return;
-      const rideData = {driver,destination,date,time,seats,owner:'booked'};
-      push(ref(db,'bookings/'), rideData); // Firebase 저장
+      if (!ok) return;
+      push(ref(db, `bookings/${userID}/`), {driver,destination,date,time,seats,owner:'my'});
     });
   }
 
-  // 실시간 반영: Search Tab
+  // Search Tab: 다른 사람 일정만 표시
   onValue(ref(db,'rides/'),(snapshot)=>{
     scheduleList.innerHTML='';
     const data = snapshot.val();
     if(!data) return;
-    Object.entries(data).forEach(([id,ride])=>{
-      const block = createScheduleBlock({...ride});
-      scheduleList.prepend(block);
+    Object.entries(data).forEach(([uid, rides])=>{
+      if(uid === userID) return;
+      Object.values(rides).forEach(ride=>{
+        const block = createScheduleBlock({...ride, owner:'other'});
+        scheduleList.prepend(block);
+      });
     });
   });
 
-  // 실시간 반영: My Page
-  function updateMyPage(){
+  // My Page: 내 일정 + 내 bookings 표시
+  onValue(ref(db, `rides/${userID}/`), snapshot=>{
     myScheduleList.innerHTML='';
-    onValue(ref(db,'rides/'),(snapshot)=>{
-      const data = snapshot.val();
-      if(data){
-        Object.entries(data).forEach(([id,ride])=>{
-          if(ride.owner==='me'){
-            const block = createScheduleBlock({...ride});
-            myScheduleList.appendChild(block);
-          }
-        });
-      }
-    });
-    onValue(ref(db,'bookings/'),(snapshot)=>{
-      const data = snapshot.val();
-      if(data){
-        Object.entries(data).forEach(([id,ride])=>{
-          const block = createScheduleBlock({...ride});
-          myScheduleList.appendChild(block);
-        });
-      }
-    });
-  }
-  updateMyPage();
+    const data = snapshot.val();
+    if(data){
+      Object.values(data).forEach(ride=>{
+        const block = createScheduleBlock({...ride, owner:'my'});
+        myScheduleList.appendChild(block);
+      });
+    }
+  });
+  onValue(ref(db, `bookings/${userID}/`), snapshot=>{
+    const data = snapshot.val();
+    if(data){
+      Object.values(data).forEach(ride=>{
+        const block = createScheduleBlock({...ride, owner:'my'});
+        myScheduleList.appendChild(block);
+      });
+    }
+  });
 
   document.getElementById('addScheduleBtn').addEventListener('click',()=>{
     const name=document.getElementById('driverName').value.trim();
@@ -210,7 +208,7 @@
       alert('Please fill all fields.');
       return;
     }
-    push(ref(db,'rides/'),{driver:name,destination:dest,date,time,seats,owner:'me'});
+    push(ref(db, `rides/${userID}/`), {driver:name,destination:dest,date,time,seats,owner:'my'});
     document.getElementById('driverName').value='';
     document.getElementById('driverDestination').value='';
     document.getElementById('departureDate').value='';
