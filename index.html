@@ -7,19 +7,19 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   body{background:#f5f5f5;display:flex;flex-direction:column;min-height:100vh}
-  header{background:yellow;color:black;padding:1rem;text-align:center;font-weight:700;font-size:1.4rem}
+  header{background:#4CAF50;color:#fff;padding:1rem;text-align:center;font-weight:700;font-size:1.4rem}
   main{flex:1;padding:1rem;overflow-y:auto}
   .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #ddd}
   .tab{flex:1;text-align:center;padding:.9rem;font-weight:700;cursor:pointer}
-  .tab.active{color:yellow;border-top:3px solid yellow}
+  .tab.active{color:#4CAF50;border-top:3px solid #4CAF50}
   .search-section,.my-schedule{margin-bottom:88px}
   .user-type{display:flex;gap:.5rem;margin-bottom:1rem}
-  .user-type button{flex:1;padding:.5rem;border-radius:6px;border:1px solid yellow;background:#fff;color:yellow;cursor:pointer}
-  .user-type button.active{background:yellow;color:#fff}
+  .user-type button{flex:1;padding:.5rem;border-radius:6px;border:1px solid #4CAF50;background:#fff;color:#4CAF50;cursor:pointer}
+  .user-type button.active{background:#4CAF50;color:#fff}
   .input-section{margin-bottom:1rem}
   .input-section label{display:block;font-weight:700;margin-bottom:.3rem}
   .input-section input{width:100%;padding:.5rem;border-radius:6px;border:1px solid #ccc;margin-bottom:.5rem}
-  .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:yellow;color:#fff;cursor:pointer}
+  .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:#4CAF50;color:#fff;cursor:pointer}
   .schedule-list{display:flex;flex-direction:column;gap:.8rem}
   .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;transition:background .12s}
   .schedule-block:hover{background:#e8f5f2}
@@ -74,160 +74,149 @@
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDrtV3vp1v0x-JAPcASxWJSXpcZsFP2jSc",
-  authDomain: "ridy-database.firebaseapp.com",
-  databaseURL: "https://ridy-database-default-rtdb.firebaseio.com",
-  projectId: "ridy-database",
-  storageBucket: "ridy-database.firebasestorage.app",
-  messagingSenderId: "447528543381",
-  appId: "1:447528543381:web:d9be84ff83f911721ae79c"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyDrtV3vp1v0x-JAPcASxWJSXpcZsFP2jSc",
+    authDomain: "ridy-database.firebaseapp.com",
+    databaseURL: "https://ridy-database-default-rtdb.firebaseio.com",
+    projectId: "ridy-database",
+    storageBucket: "ridy-database.firebasestorage.app",
+    messagingSenderId: "447528543381",
+    appId: "1:447528543381:web:d9be84ff83f911721ae79c"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-const searchTabBtn = document.getElementById('searchTabBtn');
-const myPageTabBtn = document.getElementById('myPageTabBtn');
-const searchTab = document.getElementById('searchTab');
-const myPageTab = document.getElementById('myPageTab');
+  const searchTabBtn = document.getElementById('searchTabBtn');
+  const myPageTabBtn = document.getElementById('myPageTabBtn');
+  const searchTab = document.getElementById('searchTab');
+  const myPageTab = document.getElementById('myPageTab');
 
-const passengerBtn = document.getElementById('passengerBtn');
-const driverBtn = document.getElementById('driverBtn');
-const passengerInput = document.getElementById('passengerInput');
-const driverInput = document.getElementById('driverInput');
+  const passengerBtn = document.getElementById('passengerBtn');
+  const driverBtn = document.getElementById('driverBtn');
+  const passengerInput = document.getElementById('passengerInput');
+  const driverInput = document.getElementById('driverInput');
 
-const passengerDestinationInput = document.getElementById('passengerDestination');
-const scheduleList = document.getElementById('scheduleList');
-const myScheduleList = document.getElementById('myScheduleList');
+  const passengerDestinationInput = document.getElementById('passengerDestination');
+  const scheduleList = document.getElementById('scheduleList');
+  const myScheduleList = document.getElementById('myScheduleList');
 
-// Tab switching
-searchTabBtn.addEventListener('click', ()=> {
-  searchTab.style.display = 'block';
-  myPageTab.style.display = 'none';
-  searchTabBtn.classList.add('active');
-  myPageTabBtn.classList.remove('active');
-});
-myPageTabBtn.addEventListener('click', ()=> {
-  searchTab.style.display = 'none';
-  myPageTab.style.display = 'block';
-  searchTabBtn.classList.remove('active');
-  myPageTabBtn.classList.add('active');
-});
+  searchTabBtn.addEventListener('click', ()=> {
+    searchTab.style.display = 'block';
+    myPageTab.style.display = 'none';
+    searchTabBtn.classList.add('active');
+    myPageTabBtn.classList.remove('active');
+  });
+  myPageTabBtn.addEventListener('click', ()=> {
+    searchTab.style.display = 'none';
+    myPageTab.style.display = 'block';
+    searchTabBtn.classList.remove('active');
+    myPageTabBtn.classList.add('active');
+  });
 
-// Passenger/Driver toggle
-passengerBtn.addEventListener('click', ()=> {
-  passengerBtn.classList.add('active');
-  driverBtn.classList.remove('active');
-  passengerInput.style.display = 'block';
-  driverInput.style.display = 'none';
-});
-driverBtn.addEventListener('click', ()=> {
-  driverBtn.classList.add('active');
-  passengerBtn.classList.remove('active');
-  driverInput.style.display = 'block';
-  passengerInput.style.display = 'none';
-});
+  passengerBtn.addEventListener('click', ()=> {
+    passengerBtn.classList.add('active');
+    driverBtn.classList.remove('active');
+    passengerInput.style.display = 'block';
+    driverInput.style.display = 'none';
+  });
+  driverBtn.addEventListener('click', ()=> {
+    driverBtn.classList.add('active');
+    passengerBtn.classList.remove('active');
+    driverInput.style.display = 'block';
+    passengerInput.style.display = 'none';
+  });
 
-// Utility: create a schedule block
-function createScheduleBlock({driver,destination,date,time,seats,owner}) {
-  const block = document.createElement('div');
-  block.className = 'schedule-block';
-  block.dataset.driver = driver;
-  block.dataset.destination = destination;
-  block.dataset.date = date;
-  block.dataset.time = time;
-  block.dataset.seats = seats;
-  block.dataset.owner = owner;
-  block.innerHTML = `<div><strong>Driver:</strong> ${driver}</div>
-                     <div><strong>Destination:</strong> ${destination}</div>
-                     <div><strong>Date:</strong> ${date}</div>
-                     <div><strong>Time:</strong> ${time}</div>
-                     <div><strong>Seats:</strong> ${seats}</div>`;
-  addBlockClickEvent(block);
-  return block;
-}
+  function createScheduleBlock({driver,destination,date,time,seats,owner}){
+    const block = document.createElement('div');
+    block.className = 'schedule-block';
+    block.dataset.driver = driver;
+    block.dataset.destination = destination;
+    block.dataset.date = date;
+    block.dataset.time = time;
+    block.dataset.seats = seats;
+    block.dataset.owner = owner;
+    block.innerHTML = `<div><strong>Driver:</strong> ${driver}</div>
+                       <div><strong>Destination:</strong> ${destination}</div>
+                       <div><strong>Date:</strong> ${date}</div>
+                       <div><strong>Time:</strong> ${time}</div>
+                       <div><strong>Seats:</strong> ${seats}</div>`;
+    addBlockClickEvent(block);
+    return block;
+  }
 
-// Click handler
-function addBlockClickEvent(block) {
-  block.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const {driver,destination,date,time,seats,owner} = block.dataset;
-    if(owner==='me') {
-      alert(`Your ride\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+  function addBlockClickEvent(block){
+    block.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      const {driver,destination,date,time,seats,owner} = block.dataset;
+      if(owner==='me'){
+        alert(`Your ride\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+        return;
+      }
+      const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+      if(!ok) return;
+      const rideData = {driver,destination,date,time,seats,owner:'booked'};
+      push(ref(db,'bookings/'), rideData); // Firebase 저장
+    });
+  }
+
+  // 실시간 반영: Search Tab
+  onValue(ref(db,'rides/'),(snapshot)=>{
+    scheduleList.innerHTML='';
+    const data = snapshot.val();
+    if(!data) return;
+    Object.entries(data).forEach(([id,ride])=>{
+      const block = createScheduleBlock({...ride});
+      scheduleList.prepend(block);
+    });
+  });
+
+  // 실시간 반영: My Page
+  function updateMyPage(){
+    myScheduleList.innerHTML='';
+    onValue(ref(db,'rides/'),(snapshot)=>{
+      const data = snapshot.val();
+      if(data){
+        Object.entries(data).forEach(([id,ride])=>{
+          if(ride.owner==='me'){
+            const block = createScheduleBlock({...ride});
+            myScheduleList.appendChild(block);
+          }
+        });
+      }
+    });
+    onValue(ref(db,'bookings/'),(snapshot)=>{
+      const data = snapshot.val();
+      if(data){
+        Object.entries(data).forEach(([id,ride])=>{
+          const block = createScheduleBlock({...ride});
+          myScheduleList.appendChild(block);
+        });
+      }
+    });
+  }
+  updateMyPage();
+
+  document.getElementById('addScheduleBtn').addEventListener('click',()=>{
+    const name=document.getElementById('driverName').value.trim();
+    const dest=document.getElementById('driverDestination').value.trim();
+    const date=document.getElementById('departureDate').value;
+    const time=document.getElementById('departureTime').value;
+    const seats=document.getElementById('seats').value;
+    if(!name||!dest||!date||!time||!seats){
+      alert('Please fill all fields.');
       return;
     }
-    // 다른 사람 일정일 때만 confirm
-    const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
-    if(!ok) return;
-    // Firebase에 booked로 저장
-    push(ref(db, 'bookings/'), { driver, destination, date, time, seats, owner:'booked' });
+    push(ref(db,'rides/'),{driver:name,destination:dest,date,time,seats,owner:'me'});
+    document.getElementById('driverName').value='';
+    document.getElementById('driverDestination').value='';
+    document.getElementById('departureDate').value='';
+    document.getElementById('departureTime').value='';
+    document.getElementById('seats').value='';
   });
-}
-
-// Load rides in real-time from Firebase
-onValue(ref(db, 'rides/'), (snapshot) => {
-  scheduleList.innerHTML = '';
-  const data = snapshot.val();
-  if(!data) return;
-  Object.entries(data).forEach(([id, ride]) => {
-    const block = createScheduleBlock({
-      driver: ride.driver,
-      destination: ride.destination,
-      date: ride.date,
-      time: ride.time,
-      seats: ride.seats,
-      owner: ride.owner==='me'?'me':'other'
-    });
-    scheduleList.prepend(block);
-  });
-});
-
-// Load bookings in real-time to My Page
-onValue(ref(db, 'bookings/'), (snapshot) => {
-  myScheduleList.innerHTML = '';
-  const data = snapshot.val();
-  if(!data) return;
-  Object.entries(data).forEach(([id, ride]) => {
-    const block = createScheduleBlock({
-      driver: ride.driver,
-      destination: ride.destination,
-      date: ride.date,
-      time: ride.time,
-      seats: ride.seats,
-      owner: ride.owner
-    });
-    myScheduleList.prepend(block);
-  });
-});
-
-// Add new ride
-document.getElementById('addScheduleBtn').addEventListener('click', () => {
-  const name = document.getElementById('driverName').value.trim();
-  const dest = document.getElementById('driverDestination').value.trim();
-  const date = document.getElementById('departureDate').value;
-  const time = document.getElementById('departureTime').value;
-  const seats = document.getElementById('seats').value;
-  if(!name||!dest||!date||!time||!seats){alert('Please fill all fields.');return;}
-  push(ref(db,'rides/'),{driver:name,destination:dest,date,time,seats,owner:'me'});
-  document.getElementById('driverName').value='';
-  document.getElementById('driverDestination').value='';
-  document.getElementById('departureDate').value='';
-  document.getElementById('departureTime').value='';
-  document.getElementById('seats').value='';
-});
-
-// Passenger filter
-passengerDestinationInput.addEventListener('input', ()=>{
-  const filter = passengerDestinationInput.value.trim().toLowerCase();
-  document.querySelectorAll('#scheduleList .schedule-block').forEach(block=>{
-    const dest = (block.dataset.destination||'').toLowerCase();
-    block.style.display = (!filter || dest.includes(filter))?'block':'none';
-  });
-});
 </script>
 </body>
 </html>
