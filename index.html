@@ -21,8 +21,9 @@
   .input-section input{width:100%;padding:.5rem;border-radius:6px;border:1px solid #ccc;margin-bottom:.5rem}
   .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:#FFD700;color:#000;cursor:pointer}
   .schedule-list{display:flex;flex-direction:column;gap:.8rem}
-  .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;transition:background .12s}
+  .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:background .12s}
   .schedule-block:hover{background:#fff8dc}
+  .non-clickable{cursor:default;pointer-events:none;}
   @media(min-width:768px){ main{max-width:720px;margin:0 auto} }
 </style>
 </head>
@@ -74,7 +75,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDrtV3vp1v0x-JAPcASxWJSXpcZsFP2jSc",
@@ -93,16 +94,14 @@
   const myPageTabBtn = document.getElementById('myPageTabBtn');
   const searchTab = document.getElementById('searchTab');
   const myPageTab = document.getElementById('myPageTab');
-
   const passengerBtn = document.getElementById('passengerBtn');
   const driverBtn = document.getElementById('driverBtn');
   const passengerInput = document.getElementById('passengerInput');
   const driverInput = document.getElementById('driverInput');
-
   const scheduleList = document.getElementById('scheduleList');
   const myScheduleList = document.getElementById('myScheduleList');
 
-  // 1. 사용자 ID 설정
+  // 사용자 ID
   let userID = localStorage.getItem('ridyUserID');
   if (!userID) {
     userID = prompt("Enter your unique ID (anything unique for you)");
@@ -135,69 +134,68 @@
     passengerInput.style.display = 'none';
   });
 
-  function createScheduleBlock({driver,destination,date,time,seats,owner}) {
+  function createScheduleBlock(data, keyPath, isMine = false) {
+    const { driver='', destination='', date='', time='', seats='' } = data;
     const block = document.createElement('div');
     block.className = 'schedule-block';
-    block.dataset.driver = driver;
-    block.dataset.destination = destination;
-    block.dataset.date = date;
-    block.dataset.time = time;
-    block.dataset.seats = seats;
-    block.dataset.owner = owner;
-    block.innerHTML = `<div><strong>Driver:</strong> ${driver}</div>
-                       <div><strong>Destination:</strong> ${destination}</div>
-                       <div><strong>Date:</strong> ${date}</div>
-                       <div><strong>Time:</strong> ${time}</div>
-                       <div><strong>Seats:</strong> ${seats}</div>`;
-    if(owner !== 'my') addBlockClickEvent(block);
+    block.innerHTML = `
+      <div><strong>Driver:</strong> ${driver}</div>
+      <div><strong>Destination:</strong> ${destination}</div>
+      <div><strong>Date:</strong> ${date}</div>
+      <div><strong>Time:</strong> ${time}</div>
+      <div><strong>Seats:</strong> ${seats}</div>`;
+    
+    if (isMine) {
+      // My Page: 삭제 기능
+      block.addEventListener('click', () => {
+        const ok = confirm('Do you want to delete this ride?');
+        if (ok) remove(ref(db, keyPath));
+      });
+    } else {
+      // Search: 예약 기능
+      block.addEventListener('click', () => {
+        const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+        if (ok) push(ref(db, `bookings/${userID}/`), data);
+      });
+    }
     return block;
   }
 
-  function addBlockClickEvent(block) {
-    block.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const {driver,destination,date,time,seats} = block.dataset;
-      const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
-      if (!ok) return;
-      push(ref(db, `bookings/${userID}/`), {driver,destination,date,time,seats,owner:'my'});
-    });
-  }
-
-  // Search Tab: 다른 사람 일정만 표시
+  // Search 탭: 다른 사람 일정 표시
   onValue(ref(db,'rides/'),(snapshot)=>{
     scheduleList.innerHTML='';
     const data = snapshot.val();
     if(!data) return;
     Object.entries(data).forEach(([uid, rides])=>{
       if(uid === userID) return;
-      Object.values(rides).forEach(ride=>{
-        const block = createScheduleBlock({...ride, owner:'other'});
+      Object.entries(rides).forEach(([key, ride])=>{
+        const block = createScheduleBlock(ride, `rides/${uid}/${key}`, false);
         scheduleList.prepend(block);
       });
     });
   });
 
-  // My Page: 내 일정 + 내 bookings 표시
-  onValue(ref(db, `rides/${userID}/`), snapshot=>{
-    myScheduleList.innerHTML='';
-    const data = snapshot.val();
-    if(data){
-      Object.values(data).forEach(ride=>{
-        const block = createScheduleBlock({...ride, owner:'my'});
+  // My Page: 내 rides + 내 bookings
+  function loadMyPage() {
+    myScheduleList.innerHTML = '';
+    onValue(ref(db, `rides/${userID}/`), snap => {
+      const rides = snap.val();
+      if (rides) Object.entries(rides).forEach(([key, ride]) => {
+        const block = createScheduleBlock(ride, `rides/${userID}/${key}`, true);
         myScheduleList.appendChild(block);
       });
-    }
-  });
-  onValue(ref(db, `bookings/${userID}/`), snapshot=>{
-    const data = snapshot.val();
-    if(data){
-      Object.values(data).forEach(ride=>{
-        const block = createScheduleBlock({...ride, owner:'my'});
+    });
+    onValue(ref(db, `bookings/${userID}/`), snap => {
+      const bookings = snap.val();
+      if (bookings) Object.entries(bookings).forEach(([key, ride]) => {
+        const block = createScheduleBlock(ride, `bookings/${userID}/${key}`, true);
         myScheduleList.appendChild(block);
       });
-    }
-  });
+    });
+  }
+  loadMyPage();
 
+  // Driver가 일정 추가
   document.getElementById('addScheduleBtn').addEventListener('click',()=>{
     const name=document.getElementById('driverName').value.trim();
     const dest=document.getElementById('driverDestination').value.trim();
@@ -208,7 +206,7 @@
       alert('Please fill all fields.');
       return;
     }
-    push(ref(db, `rides/${userID}/`), {driver:name,destination:dest,date,time,seats,owner:'my'});
+    push(ref(db, `rides/${userID}/`), {driver:name,destination:dest,date,time,seats});
     document.getElementById('driverName').value='';
     document.getElementById('driverDestination').value='';
     document.getElementById('departureDate').value='';
