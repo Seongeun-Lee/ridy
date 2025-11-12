@@ -59,44 +59,12 @@
     </div>
 
     <!-- Schedule List (shared) -->
-    <div class="schedule-list" id="scheduleList">
-      <!-- sample block 1 (other user) -->
-      <div class="schedule-block"
-           data-driver="John Doe"
-           data-destination="Ala Moana"
-           data-date="2025-11-15"
-           data-time="10:00"
-           data-seats="3"
-           data-owner="other">
-        <div><strong>Driver:</strong> John Doe</div>
-        <div><strong>Destination:</strong> Ala Moana</div>
-        <div><strong>Date:</strong> 2025-11-15</div>
-        <div><strong>Time:</strong> 10:00</div>
-        <div><strong>Seats:</strong> 3</div>
-      </div>
-
-      <!-- sample block 2 (other user) -->
-      <div class="schedule-block"
-           data-driver="Alice Smith"
-           data-destination="Waikiki"
-           data-date="2025-11-15"
-           data-time="11:30"
-           data-seats="2"
-           data-owner="other">
-        <div><strong>Driver:</strong> Alice Smith</div>
-        <div><strong>Destination:</strong> Waikiki</div>
-        <div><strong>Date:</strong> 2025-11-15</div>
-        <div><strong>Time:</strong> 11:30</div>
-        <div><strong>Seats:</strong> 2</div>
-      </div>
-    </div>
+    <div class="schedule-list" id="scheduleList"></div>
   </div>
 
   <div id="myPageTab" class="my-schedule" style="display:none">
     <h2 style="margin-bottom:.6rem">My Booked & My Created Rides</h2>
-    <div class="schedule-list" id="myScheduleList">
-      <!-- my rides will appear here -->
-    </div>
+    <div class="schedule-list" id="myScheduleList"></div>
   </div>
 </main>
 
@@ -105,8 +73,23 @@
   <div id="myPageTabBtn" class="tab">My Page</div>
 </div>
 
-<script>
-  // Elements
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDrtV3vp1v0x-JAPcASxWJSXpcZsFP2jSc",
+    authDomain: "ridy-database.firebaseapp.com",
+    databaseURL: "https://ridy-database-default-rtdb.firebaseio.com",
+    projectId: "ridy-database",
+    storageBucket: "ridy-database.firebasestorage.app",
+    messagingSenderId: "447528543381",
+    appId: "1:447528543381:web:d9be84ff83f911721ae79c"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
   const searchTabBtn = document.getElementById('searchTabBtn');
   const myPageTabBtn = document.getElementById('myPageTabBtn');
   const searchTab = document.getElementById('searchTab');
@@ -121,7 +104,6 @@
   const scheduleList = document.getElementById('scheduleList');
   const myScheduleList = document.getElementById('myScheduleList');
 
-  // Tab switching
   searchTabBtn.addEventListener('click', ()=> {
     searchTab.style.display = 'block';
     myPageTab.style.display = 'none';
@@ -135,7 +117,6 @@
     myPageTabBtn.classList.add('active');
   });
 
-  // Passenger/Driver toggle
   passengerBtn.addEventListener('click', ()=> {
     passengerBtn.classList.add('active');
     driverBtn.classList.remove('active');
@@ -149,7 +130,6 @@
     passengerInput.style.display = 'none';
   });
 
-  // Utility: create a schedule block element with dataset
   function createScheduleBlock({driver,destination,date,time,seats,owner}) {
     const block = document.createElement('div');
     block.className = 'schedule-block';
@@ -158,109 +138,68 @@
     block.dataset.date = date;
     block.dataset.time = time;
     block.dataset.seats = seats;
-    block.dataset.owner = owner; // "me" or "other"
+    block.dataset.owner = owner;
     block.innerHTML = `<div><strong>Driver:</strong> ${driver}</div>
                        <div><strong>Destination:</strong> ${destination}</div>
                        <div><strong>Date:</strong> ${date}</div>
                        <div><strong>Time:</strong> ${time}</div>
                        <div><strong>Seats:</strong> ${seats}</div>`;
+    addBlockClickEvent(block);
     return block;
   }
 
-  // Click handler for schedule blocks
   function addBlockClickEvent(block) {
     block.addEventListener('click', (e) => {
-      // prevent double triggering if click happens on nested elements
-      // (event delegation not used here, but safe-guard)
       e.stopPropagation();
-
-      const driver = block.dataset.driver || '';
-      const destination = block.dataset.destination || '';
-      const date = block.dataset.date || '';
-      const time = block.dataset.time || '';
-      const seats = block.dataset.seats || '';
-      const owner = block.dataset.owner || 'other';
-
+      const {driver, destination, date, time, seats, owner} = block.dataset;
       if (owner === 'me') {
-        // my created ride -> just show detail
         alert(`Your ride\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
         return;
       }
-
-      // other user's ride -> confirm booking
       const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
       if (!ok) return;
-
-      // create a clone for My Page with owner "booked"
-      const booked = createScheduleBlock({
-        driver, destination, date, time, seats, owner: 'booked'
-      });
-
+      const booked = createScheduleBlock({driver, destination, date, time, seats, owner:'booked'});
       myScheduleList.appendChild(booked);
       alert('Ride booked and added to My Page.');
     });
   }
 
-  // Attach click handlers to initial blocks
-  document.querySelectorAll('#scheduleList .schedule-block').forEach(block => {
-    // ensure datasets exist for initial ones (already set in HTML)
-    if (!block.dataset.owner) block.dataset.owner = 'other';
-    addBlockClickEvent(block);
-  });
-
-  // Filtering by passenger destination (live)
-  passengerDestinationInput.addEventListener('input', () => {
-    const filter = passengerDestinationInput.value.trim().toLowerCase();
-    document.querySelectorAll('#scheduleList .schedule-block').forEach(block => {
-      const dest = (block.dataset.destination || '').toLowerCase();
-      block.style.display = (!filter || dest.includes(filter)) ? 'block' : 'none';
+  // Load rides in real-time from Firebase
+  onValue(ref(db, 'rides/'), (snapshot) => {
+    scheduleList.innerHTML = '';
+    const data = snapshot.val();
+    if (!data) return;
+    Object.entries(data).forEach(([id, ride]) => {
+      const block = createScheduleBlock({
+        driver: ride.driver,
+        destination: ride.destination,
+        date: ride.date,
+        time: ride.time,
+        seats: ride.seats,
+        owner: ride.owner
+      });
+      scheduleList.prepend(block);
     });
   });
 
-  // Add schedule (driver creates new ride)
   document.getElementById('addScheduleBtn').addEventListener('click', () => {
     const name = document.getElementById('driverName').value.trim();
     const dest = document.getElementById('driverDestination').value.trim();
     const date = document.getElementById('departureDate').value;
     const time = document.getElementById('departureTime').value;
     const seats = document.getElementById('seats').value;
-
     if (!name || !dest || !date || !time || !seats) {
       alert('Please fill all fields.');
       return;
     }
-
-    // create block with owner = me
-    const block = createScheduleBlock({
-      driver: name,
-      destination: dest,
-      date,
-      time,
-      seats,
-      owner: 'me'
-    });
-
-    // add to shared list and attach click
-    scheduleList.prepend(block);
-    addBlockClickEvent(block);
-
-    // also add a copy to My Page so "my created rides" appear
-    const myCopy = createScheduleBlock({
-      driver: name,
-      destination: dest,
-      date,
-      time,
-      seats,
-      owner: 'me'
-    });
+    push(ref(db, 'rides/'), { driver:name, destination:dest, date, time, seats, owner:'me' });
+    const myCopy = createScheduleBlock({driver:name, destination:dest, date, time, seats, owner:'me'});
     myScheduleList.appendChild(myCopy);
-
-    // clear inputs
-    document.getElementById('driverName').value = '';
-    document.getElementById('driverDestination').value = '';
-    document.getElementById('departureDate').value = '';
-    document.getElementById('departureTime').value = '';
-    document.getElementById('seats').value = '';
+    document.getElementById('driverName').value='';
+    document.getElementById('driverDestination').value='';
+    document.getElementById('departureDate').value='';
+    document.getElementById('departureTime').value='';
+    document.getElementById('seats').value='';
   });
 </script>
 </body>
