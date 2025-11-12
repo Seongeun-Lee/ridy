@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ridy</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+  body{background:#f5f5f5;display:flex;flex-direction:column;min-height:100vh}
+  header{background:#4CAF50;color:#fff;padding:1rem;text-align:center;font-weight:700;font-size:1.4rem}
+  main{flex:1;padding:1rem;overflow-y:auto}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #ddd}
+  .tab{flex:1;text-align:center;padding:.9rem;font-weight:700;cursor:pointer}
+  .tab.active{color:#4CAF50;border-top:3px solid #4CAF50}
+  .search-section,.my-schedule{margin-bottom:88px}
+  .user-type{display:flex;gap:.5rem;margin-bottom:1rem}
+  .user-type button{flex:1;padding:.5rem;border-radius:6px;border:1px solid #4CAF50;background:#fff;color:#4CAF50;cursor:pointer}
+  .user-type button.active{background:#4CAF50;color:#fff}
+  .input-section{margin-bottom:1rem}
+  .input-section label{display:block;font-weight:700;margin-bottom:.3rem}
+  .input-section input{width:100%;padding:.5rem;border-radius:6px;border:1px solid #ccc;margin-bottom:.5rem}
+  .btn{display:inline-block;padding:.5rem .8rem;border-radius:6px;border:none;background:#4CAF50;color:#fff;cursor:pointer}
+  .schedule-list{display:flex;flex-direction:column;gap:.8rem}
+  .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;transition:background .12s}
+  .schedule-block:hover{background:#e8f5f2}
+  @media(min-width:768px){ main{max-width:720px;margin:0 auto} }
+</style>
+</head>
+<body>
+<header>Ridy</header>
+<main>
+  <div id="searchTab" class="search-section">
+    <div class="user-type">
+      <button id="passengerBtn" class="active">Passenger</button>
+      <button id="driverBtn">Driver</button>
+    </div>
+
+    <!-- Passenger Input -->
+    <div class="input-section" id="passengerInput">
+      <label for="passengerDestination">Search Destination</label>
+      <input id="passengerDestination" type="text" placeholder="Enter your destination (filter)" />
+    </div>
+
+    <!-- Driver Input -->
+    <div class="input-section" id="driverInput" style="display:none">
+      <label for="driverName">Your Name</label>
+      <input id="driverName" type="text" placeholder="Enter your name" />
+      <label for="driverDestination">Destination</label>
+      <input id="driverDestination" type="text" placeholder="Enter destination" />
+      <label for="departureDate">Date</label>
+      <input id="departureDate" type="date" />
+      <label for="departureTime">Time</label>
+      <input id="departureTime" type="time" />
+      <label for="seats">Available Seats</label>
+      <input id="seats" type="number" min="1" placeholder="Number of seats" />
+      <div style="margin-top:.5rem">
+        <button id="addScheduleBtn" class="btn">Add Schedule</button>
+      </div>
+    </div>
+
+    <!-- Schedule List (shared) -->
+    <div class="schedule-list" id="scheduleList">
+      <!-- sample block 1 (other user) -->
+      <div class="schedule-block"
+           data-driver="John Doe"
+           data-destination="Ala Moana"
+           data-date="2025-11-15"
+           data-time="10:00"
+           data-seats="3"
+           data-owner="other">
+        <div><strong>Driver:</strong> John Doe</div>
+        <div><strong>Destination:</strong> Ala Moana</div>
+        <div><strong>Date:</strong> 2025-11-15</div>
+        <div><strong>Time:</strong> 10:00</div>
+        <div><strong>Seats:</strong> 3</div>
+      </div>
+
+      <!-- sample block 2 (other user) -->
+      <div class="schedule-block"
+           data-driver="Alice Smith"
+           data-destination="Waikiki"
+           data-date="2025-11-15"
+           data-time="11:30"
+           data-seats="2"
+           data-owner="other">
+        <div><strong>Driver:</strong> Alice Smith</div>
+        <div><strong>Destination:</strong> Waikiki</div>
+        <div><strong>Date:</strong> 2025-11-15</div>
+        <div><strong>Time:</strong> 11:30</div>
+        <div><strong>Seats:</strong> 2</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="myPageTab" class="my-schedule" style="display:none">
+    <h2 style="margin-bottom:.6rem">My Booked & My Created Rides</h2>
+    <div class="schedule-list" id="myScheduleList">
+      <!-- my rides will appear here -->
+    </div>
+  </div>
+</main>
+
+<div class="tabs">
+  <div id="searchTabBtn" class="tab active">Search</div>
+  <div id="myPageTabBtn" class="tab">My Page</div>
+</div>
+
+<script>
+  // Elements
+  const searchTabBtn = document.getElementById('searchTabBtn');
+  const myPageTabBtn = document.getElementById('myPageTabBtn');
+  const searchTab = document.getElementById('searchTab');
+  const myPageTab = document.getElementById('myPageTab');
+
+  const passengerBtn = document.getElementById('passengerBtn');
+  const driverBtn = document.getElementById('driverBtn');
+  const passengerInput = document.getElementById('passengerInput');
+  const driverInput = document.getElementById('driverInput');
+
+  const passengerDestinationInput = document.getElementById('passengerDestination');
+  const scheduleList = document.getElementById('scheduleList');
+  const myScheduleList = document.getElementById('myScheduleList');
+
+  // Tab switching
+  searchTabBtn.addEventListener('click', ()=> {
+    searchTab.style.display = 'block';
+    myPageTab.style.display = 'none';
+    searchTabBtn.classList.add('active');
+    myPageTabBtn.classList.remove('active');
+  });
+  myPageTabBtn.addEventListener('click', ()=> {
+    searchTab.style.display = 'none';
+    myPageTab.style.display = 'block';
+    searchTabBtn.classList.remove('active');
+    myPageTabBtn.classList.add('active');
+  });
+
+  // Passenger/Driver toggle
+  passengerBtn.addEventListener('click', ()=> {
+    passengerBtn.classList.add('active');
+    driverBtn.classList.remove('active');
+    passengerInput.style.display = 'block';
+    driverInput.style.display = 'none';
+  });
+  driverBtn.addEventListener('click', ()=> {
+    driverBtn.classList.add('active');
+    passengerBtn.classList.remove('active');
+    driverInput.style.display = 'block';
+    passengerInput.style.display = 'none';
+  });
+
+  // Utility: create a schedule block element with dataset
+  function createScheduleBlock({driver,destination,date,time,seats,owner}) {
+    const block = document.createElement('div');
+    block.className = 'schedule-block';
+    block.dataset.driver = driver;
+    block.dataset.destination = destination;
+    block.dataset.date = date;
+    block.dataset.time = time;
+    block.dataset.seats = seats;
+    block.dataset.owner = owner; // "me" or "other"
+    block.innerHTML = `<div><strong>Driver:</strong> ${driver}</div>
+                       <div><strong>Destination:</strong> ${destination}</div>
+                       <div><strong>Date:</strong> ${date}</div>
+                       <div><strong>Time:</strong> ${time}</div>
+                       <div><strong>Seats:</strong> ${seats}</div>`;
+    return block;
+  }
+
+  // Click handler for schedule blocks
+  function addBlockClickEvent(block) {
+    block.addEventListener('click', (e) => {
+      // prevent double triggering if click happens on nested elements
+      // (event delegation not used here, but safe-guard)
+      e.stopPropagation();
+
+      const driver = block.dataset.driver || '';
+      const destination = block.dataset.destination || '';
+      const date = block.dataset.date || '';
+      const time = block.dataset.time || '';
+      const seats = block.dataset.seats || '';
+      const owner = block.dataset.owner || 'other';
+
+      if (owner === 'me') {
+        // my created ride -> just show detail
+        alert(`Your ride\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+        return;
+      }
+
+      // other user's ride -> confirm booking
+      const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
+      if (!ok) return;
+
+      // create a clone for My Page with owner "booked"
+      const booked = createScheduleBlock({
+        driver, destination, date, time, seats, owner: 'booked'
+      });
+
+      myScheduleList.appendChild(booked);
+      alert('Ride booked and added to My Page.');
+    });
+  }
+
+  // Attach click handlers to initial blocks
+  document.querySelectorAll('#scheduleList .schedule-block').forEach(block => {
+    // ensure datasets exist for initial ones (already set in HTML)
+    if (!block.dataset.owner) block.dataset.owner = 'other';
+    addBlockClickEvent(block);
+  });
+
+  // Filtering by passenger destination (live)
+  passengerDestinationInput.addEventListener('input', () => {
+    const filter = passengerDestinationInput.value.trim().toLowerCase();
+    document.querySelectorAll('#scheduleList .schedule-block').forEach(block => {
+      const dest = (block.dataset.destination || '').toLowerCase();
+      block.style.display = (!filter || dest.includes(filter)) ? 'block' : 'none';
+    });
+  });
+
+  // Add schedule (driver creates new ride)
+  document.getElementById('addScheduleBtn').addEventListener('click', () => {
+    const name = document.getElementById('driverName').value.trim();
+    const dest = document.getElementById('driverDestination').value.trim();
+    const date = document.getElementById('departureDate').value;
+    const time = document.getElementById('departureTime').value;
+    const seats = document.getElementById('seats').value;
+
+    if (!name || !dest || !date || !time || !seats) {
+      alert('Please fill all fields.');
+      return;
+    }
+
+    // create block with owner = me
+    const block = createScheduleBlock({
+      driver: name,
+      destination: dest,
+      date,
+      time,
+      seats,
+      owner: 'me'
+    });
+
+    // add to shared list and attach click
+    scheduleList.prepend(block);
+    addBlockClickEvent(block);
+
+    // also add a copy to My Page so "my created rides" appear
+    const myCopy = createScheduleBlock({
+      driver: name,
+      destination: dest,
+      date,
+      time,
+      seats,
+      owner: 'me'
+    });
+    myScheduleList.appendChild(myCopy);
+
+    // clear inputs
+    document.getElementById('driverName').value = '';
+    document.getElementById('driverDestination').value = '';
+    document.getElementById('departureDate').value = '';
+    document.getElementById('departureTime').value = '';
+    document.getElementById('seats').value = '';
+  });
+</script>
+</body>
+</html>
