@@ -23,7 +23,6 @@
   .schedule-list{display:flex;flex-direction:column;gap:.8rem}
   .schedule-block{background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:background .12s}
   .schedule-block:hover{background:#fff8dc}
-  .non-clickable{cursor:default;pointer-events:none;}
   @media(min-width:768px){ main{max-width:720px;margin:0 auto} }
 </style>
 </head>
@@ -100,13 +99,17 @@
   const driverInput = document.getElementById('driverInput');
   const scheduleList = document.getElementById('scheduleList');
   const myScheduleList = document.getElementById('myScheduleList');
+  const passengerSearchInput = document.getElementById('passengerDestination');
 
-  // 사용자 ID
+  // User ID storage
   let userID = localStorage.getItem('ridyUserID');
   if (!userID) {
     userID = prompt("Enter your unique ID (anything unique for you)");
     localStorage.setItem('ridyUserID', userID);
   }
+
+  // Array for storing all rides from database
+  let allRides = [];
 
   searchTabBtn.addEventListener('click', ()=> {
     searchTab.style.display = 'block';
@@ -146,13 +149,11 @@
       <div><strong>Seats:</strong> ${seats}</div>`;
     
     if (isMine) {
-      // My Page: 삭제 기능
       block.addEventListener('click', () => {
         const ok = confirm('Do you want to delete this ride?');
         if (ok) remove(ref(db, keyPath));
       });
     } else {
-      // Search: 예약 기능
       block.addEventListener('click', () => {
         const ok = confirm(`Do you want to book this ride?\n\nDriver: ${driver}\nDestination: ${destination}\nDate: ${date}\nTime: ${time}\nSeats: ${seats}`);
         if (ok) push(ref(db, `bookings/${userID}/`), data);
@@ -161,23 +162,54 @@
     return block;
   }
 
-  // Search 탭: 다른 사람 일정 표시
+  // Render rides with filter applied
+  function renderFilteredRides() {
+    const keyword = passengerSearchInput.value.trim().toLowerCase();
+    scheduleList.innerHTML = '';
+
+    const filtered = allRides.filter(ride => {
+      if (!keyword) return true;
+      const tokens = ride.destination.toLowerCase().split(' ');
+      return tokens.some(token => token.includes(keyword));
+    });
+
+    filtered.forEach(ride => {
+      const { uid, key, driver, destination, date, time, seats } = ride;
+      const block = createScheduleBlock(
+        { driver, destination, date, time, seats },
+        `rides/${uid}/${key}`,
+        false
+      );
+      scheduleList.prepend(block);
+    });
+  }
+
+  // Load rides for Search tab
   onValue(ref(db,'rides/'),(snapshot)=>{
-    scheduleList.innerHTML='';
+    allRides = [];
     const data = snapshot.val();
-    if(!data) return;
+    if(!data){
+      scheduleList.innerHTML='';
+      return;
+    }
+
     Object.entries(data).forEach(([uid, rides])=>{
-      if(uid === userID) return;
+      if(uid === userID) return; // Exclude user's own rides
       Object.entries(rides).forEach(([key, ride])=>{
-        const block = createScheduleBlock(ride, `rides/${uid}/${key}`, false);
-        scheduleList.prepend(block);
+        allRides.push({ uid, key, ...ride });
       });
     });
+
+    renderFilteredRides();
   });
 
-  // My Page: 내 rides + 내 bookings
+  // Apply filter on typing
+  passengerSearchInput.addEventListener('input', renderFilteredRides);
+
+  // Load My Page: user's own rides + user's bookings
   function loadMyPage() {
     myScheduleList.innerHTML = '';
+
     onValue(ref(db, `rides/${userID}/`), snap => {
       const rides = snap.val();
       if (rides) Object.entries(rides).forEach(([key, ride]) => {
@@ -185,6 +217,7 @@
         myScheduleList.appendChild(block);
       });
     });
+
     onValue(ref(db, `bookings/${userID}/`), snap => {
       const bookings = snap.val();
       if (bookings) Object.entries(bookings).forEach(([key, ride]) => {
@@ -195,18 +228,21 @@
   }
   loadMyPage();
 
-  // Driver가 일정 추가
+  // Driver adds a ride schedule
   document.getElementById('addScheduleBtn').addEventListener('click',()=>{
     const name=document.getElementById('driverName').value.trim();
     const dest=document.getElementById('driverDestination').value.trim();
     const date=document.getElementById('departureDate').value;
     const time=document.getElementById('departureTime').value;
     const seats=document.getElementById('seats').value;
+
     if(!name||!dest||!date||!time||!seats){
       alert('Please fill all fields.');
       return;
     }
+
     push(ref(db, `rides/${userID}/`), {driver:name,destination:dest,date,time,seats});
+
     document.getElementById('driverName').value='';
     document.getElementById('driverDestination').value='';
     document.getElementById('departureDate').value='';
