@@ -141,12 +141,23 @@
     const { driver='', destination='', date='', time='', seats='' } = data;
     const block = document.createElement('div');
     block.className = 'schedule-block';
-    block.innerHTML = `
-      <div><strong>Driver:</strong> ${driver}</div>
-      <div><strong>Destination:</strong> ${destination}</div>
-      <div><strong>Date:</strong> ${date}</div>
-      <div><strong>Time:</strong> ${time}</div>
-      <div><strong>Seats:</strong> ${seats}</div>`;
+    const fields = [
+      ['Driver:', driver],
+      ['Destination:', destination],
+      ['Date:', date],
+      ['Time:', time],
+      ['Seats:', seats]
+    ];
+
+    fields.forEach(([label, value]) => {
+      const row = document.createElement('div');
+      const labelElement = document.createElement('strong');
+      labelElement.textContent = label;
+      const valueElement = document.createElement('span');
+      valueElement.textContent = String(value ?? '');
+      row.append(labelElement, valueElement);
+      block.appendChild(row);
+    });
     
     if (isMine) {
       block.addEventListener('click', () => {
@@ -165,11 +176,11 @@
   // Render rides with filter applied
   function renderFilteredRides() {
     const keyword = passengerSearchInput.value.trim().toLowerCase();
-    scheduleList.innerHTML = '';
+    scheduleList.replaceChildren();
 
     const filtered = allRides.filter(ride => {
       if (!keyword) return true;
-      const tokens = ride.destination.toLowerCase().split(' ');
+      const tokens = String(ride.destination ?? '').toLowerCase().split(' ');
       return tokens.some(token => token.includes(keyword));
     });
 
@@ -189,7 +200,7 @@
     allRides = [];
     const data = snapshot.val();
     if(!data){
-      scheduleList.innerHTML='';
+      scheduleList.replaceChildren();
       return;
     }
 
@@ -208,7 +219,7 @@
 
   // Load My Page: user's own rides + user's bookings
   function loadMyPage() {
-    myScheduleList.innerHTML = '';
+    myScheduleList.replaceChildren();
 
     onValue(ref(db, `rides/${userID}/`), snap => {
       const rides = snap.val();
